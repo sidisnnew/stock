@@ -4,5 +4,9 @@ from tkinter import ttk, messagebox
 import yfinance as yf
 import pandas as pd
 
+class StockAnalyzer:
+    def __init__(self, root):
+
+
 if __name__ == "__main__":
-    main = tk.Tk()
+    root = tk.Tk()
