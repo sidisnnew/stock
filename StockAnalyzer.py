@@ -29,14 +29,37 @@ class StockAnalyzer:
         self.sButton = ttk.Button(frame, text="Search", command=self.analyze)
         self.sButton.grid(row=0, column=4, padx=5, pady=5)
 
-        # Summary display
+        # Summary
         summaryFrame = ttk.LabelFrame(self.mw, text="Summary", padding=10)
         summaryFrame.pack(fill="x", padx=12, pady=(0, 8))
         self.summary = tk.StringVar(value="Latest close: --   Daily change: --   20-day MA: --   50-day MA: --")
         ttk.Label(summaryFrame, textvariable=self.summary).pack(anchor="w")
 
+        # Information
+        infoFrame = ttk.LabelFrame(self.mw, text="Information")
+        infoFrame.pack(fill="x", padx=12, pady=(0, 8))
+        self.info = {}
+        infoItem = [
+            ("P/E", "pe"),
+            ("EPS", "eps"),
+            ("Revenue", "revenue"),
+            ("Revenue growth", "revenue_growth"),
+            ("Net income growth", "income_growth"),
+            ("Free cash flow", "free_cash_flow"),
+            ("Total debt", "total_debt"),
+            ("Dividend yield", "dividend_yield")
+        ]
+        for index, (label, key) in enumerate(infoItem):
+            row = index // 2
+            col = index % 2 * 2
+            value = tk.StringVar(value="--")
+            self.info[key] = value
+            ttk.Label(infoFrame, text=f"{label}: ").grid(row=row, column=col, padx=(0, 5), pady=(0, 10), sticky="w")
+            ttk.Label(infoFrame, textvariable=value, width=20).grid(row=row, column=col+1, pady=(0, 10))
+
+        
         # Chart
-        self.figure = Figure(figsize=(10, 10), dpi=100)
+        self.figure = Figure(figsize=(16, 9), dpi=100)
         self.axes = self.figure.add_subplot(111)
         self.axes.set_title("Stock Price")
         self.axes.set_xlabel("Date")
@@ -46,6 +69,7 @@ class StockAnalyzer:
         self.canvas = FigureCanvasTkAgg(self.figure, master=self.mw)
         self.canvas.get_tk_widget().pack(fill="x", expand=True, padx=10, pady=(0,15))
         self.canvas.draw()
+
 
     def analyze(self):
         ticker = self.tEntry.get().strip().upper()
@@ -97,6 +121,9 @@ class StockAnalyzer:
                 ma50Text = "Not enough data"
 
             self.summary.set(f"{ticker} | Latest close({latestDate}): {latestClose:.2f}   Daily Change: {dailyChangeText}   MA20: {ma20Text}   MA50: {ma50Text}")
+
+            # Load information
+            self.loadInfo(stock)
             
             # plot graph
             self.axes.clear()
@@ -110,11 +137,51 @@ class StockAnalyzer:
             self.axes.grid(True, alpha=0.2)
             self.axes.legend()
             self.canvas.draw()
+
+
         except Exception as error:
             messagebox.showerror("Error", error)
         finally:
             self.sButton.config(state="normal")
 
+
+    def loadInfo(self, stock):
+        # initialize
+        for value in self.info.values():
+            value.set("--")
+        infoTemp = {}
+        try:
+            infoTemp = stock.info
+            self.info["pe"].set(f"{infoTemp.get('trailingPE'):,.2f}")
+            self.info["eps"].set(f"{float(infoTemp.get('trailingEps')):,.2f}")
+            self.info["revenue"].set(f"{float(infoTemp.get('totalRevenue')):,.2f}")
+            self.info["free_cash_flow"].set(f"{float(infoTemp.get('freeCashflow')):,.2f}")
+            self.info["total_debt"].set(f"{float(infoTemp.get('totalDebt')):,.2f}")
+            self.info["dividend_yield"].set(f"{float(infoTemp.get('dividendYield'))*100:,.2f}%")
+        except Exception as error:
+            messagebox.showerror("Error", error)        
+
+        try:
+            financial = stock.financials
+            if not financial.empty and len(financial.columns)>=2:
+                if "Operating Revenue" in financial.index:
+                    revenue = financial.loc["Operating Revenue"]
+                elif "Total Revenue" in financial.index:
+                    revenue = financial.loc["Total Revenue"]
+                else:
+                    revenue = None
+
+                if "Net Income" in financial.index:
+                    income = financial.loc["Net Income"]
+                else:
+                    income = None
+
+                self.info["revenue_growth"].set(f"{(revenue.iloc[0]-revenue.iloc[1])/revenue.iloc[1]*100:+,.2f}%")
+                self.info["income_growth"].set(f"{(income.iloc[0]-income.iloc[1])/income.iloc[1]*100:+,.2f}%")    
+        except Exception as error:
+            messagebox.showerror("Error", error)
+
+        
 
 if __name__ == "__main__":
     mw = tk.Tk()
