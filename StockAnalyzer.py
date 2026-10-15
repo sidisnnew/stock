@@ -152,36 +152,62 @@ class StockAnalyzer:
         infoTemp = {}
         try:
             infoTemp = stock.info
-            self.info["pe"].set(f"{infoTemp.get('trailingPE'):,.2f}")
-            self.info["eps"].set(f"{float(infoTemp.get('trailingEps')):,.2f}")
-            self.info["revenue"].set(f"{float(infoTemp.get('totalRevenue')):,.2f}")
-            self.info["free_cash_flow"].set(f"{float(infoTemp.get('freeCashflow')):,.2f}")
-            self.info["total_debt"].set(f"{float(infoTemp.get('totalDebt')):,.2f}")
-            self.info["dividend_yield"].set(f"{float(infoTemp.get('dividendYield'))*100:,.2f}%")
-        except Exception as error:
-            messagebox.showerror("Error", error)        
-
-        try:
-            financial = stock.financials
-            if not financial.empty and len(financial.columns)>=2:
-                if "Operating Revenue" in financial.index:
-                    revenue = financial.loc["Operating Revenue"]
-                elif "Total Revenue" in financial.index:
-                    revenue = financial.loc["Total Revenue"]
-                else:
-                    revenue = None
-
-                if "Net Income" in financial.index:
-                    income = financial.loc["Net Income"]
-                else:
-                    income = None
-
-                self.info["revenue_growth"].set(f"{(revenue.iloc[0]-revenue.iloc[1])/revenue.iloc[1]*100:+,.2f}%")
-                self.info["income_growth"].set(f"{(income.iloc[0]-income.iloc[1])/income.iloc[1]*100:+,.2f}%")    
         except Exception as error:
             messagebox.showerror("Error", error)
 
-        
+        pe = infoTemp.get("trailingPE")
+        eps = infoTemp.get("trailingEps")
+        revenue = infoTemp.get("totalRevenue")
+        freeCashflow = infoTemp.get("freeCashflow")
+        totalDebt = infoTemp.get("totalDebt")
+        dividendYield = infoTemp.get("dividendYield")
+
+        def checkContent(content):
+            try:
+                if content is None:
+                    return "n/a"
+                return f"{float(content):,.2f}"
+            except:
+                return "n/a"
+
+        self.info["pe"].set(f"{checkContent(pe)}")
+        self.info["eps"].set(f"${checkContent(eps)}")
+        self.info["revenue"].set(f"${checkContent(revenue)}")
+        self.info["free_cash_flow"].set(f"${checkContent(freeCashflow)}")
+        self.info["total_debt"].set(f"${checkContent(totalDebt)}")
+        if checkContent(dividendYield) != "n/a":
+            self.info["dividend_yield"].set(f"{checkContent(dividendYield)}%")
+        else:
+            self.info["total_debt"].set(f"${checkContent(dividendYield)}")
+
+        try:
+            financial = stock.financials
+        except Exception as error:
+            messagebox.showerror("Error", error)
+
+        if not financial.empty and len(financial.columns)>=2:
+            if "Operating Revenue" in financial.index:
+                revenue = financial.loc["Operating Revenue"]
+            elif "Total Revenue" in financial.index:
+                revenue = financial.loc["Total Revenue"]
+            else:
+                revenue = None
+
+            if "Net Income" in financial.index:
+                income = financial.loc["Net Income"]
+            else:
+                income = None
+
+        if not revenue.empty:
+            self.info["revenue_growth"].set(f"{(revenue.iloc[0]-revenue.iloc[1])/revenue.iloc[1]*100:+,.2f}%")
+        else:
+            self.info["revenue_growth"].set("n/a")
+
+        if not income.empty:
+            self.info["income_growth"].set(f"{(income.iloc[0]-income.iloc[1])/income.iloc[1]*100:+,.2f}%")    
+        else:
+            self.info["income_growth"].set("n/a")        
+
 
 if __name__ == "__main__":
     mw = tk.Tk()
