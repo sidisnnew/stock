@@ -54,10 +54,29 @@ class StockAnalyzer:
             col = index % 2 * 2
             value = tk.StringVar(value="--")
             self.info[key] = value
-            ttk.Label(infoFrame, text=f"{label}: ").grid(row=row, column=col, padx=(0, 5), pady=(0, 10), sticky="w")
-            ttk.Label(infoFrame, textvariable=value, width=20).grid(row=row, column=col+1, pady=(0, 10))
+            ttk.Label(infoFrame, text=f"{label}: ").grid(row=row, column=col, padx=(10, 5), pady=(5, 5), sticky="w")
+            ttk.Label(infoFrame, textvariable=value, width=20).grid(row=row, column=col+1, pady=(5, 5))
 
-        
+        # Valuation
+        valFrame = ttk.LabelFrame(self.mw, text="Valuation")
+        valFrame.pack(fill="x", padx=12, pady=(0, 8))
+        self.val = {}
+        valItem = [
+            ("Forward P/E", "forward_pe"),
+            ("PEG ratio", "peg"),
+            ("Price-to-Book (P/B)", "price_to_book"),
+            ("Price-to-Sales (P/S)", "price_to_sales"),
+            ("Estimated fair value", "fair_value"),
+            ("Difference vs. latest close", "difference")
+        ]
+        for index, (label, key) in enumerate(valItem):
+            row = index // 2
+            col = index % 2 * 2
+            value = tk.StringVar(value="--")
+            self.val[key] = value
+            ttk.Label(valFrame, text=f"{label}:").grid(row=row, column=col, padx=(10, 5), pady=(5, 5), sticky="w")
+            ttk.Label(valFrame, textvariable=value, width=20).grid(row=row, column=col+1, pady=(5, 5))
+
         # Chart
         self.figure = Figure(figsize=(16, 9), dpi=100)
         self.axes = self.figure.add_subplot(111)
@@ -70,7 +89,7 @@ class StockAnalyzer:
         self.canvas.get_tk_widget().pack(fill="x", expand=True, padx=10, pady=(0,15))
         self.canvas.draw()
 
-
+    # action after press search
     def analyze(self):
         ticker = self.tEntry.get().strip().upper()
         period = self.pVar.get()
@@ -124,6 +143,9 @@ class StockAnalyzer:
 
             # Load information
             self.loadInfo(stock)
+
+            # Load valuation
+            self.loadVal(stock, latestClose)
             
             # plot graph
             self.axes.clear()
@@ -144,7 +166,7 @@ class StockAnalyzer:
         finally:
             self.sButton.config(state="normal")
 
-
+    # handle information
     def loadInfo(self, stock):
         # initialize
         for value in self.info.values():
@@ -152,35 +174,90 @@ class StockAnalyzer:
         infoTemp = {}
         try:
             infoTemp = stock.info
-            self.info["pe"].set(f"{infoTemp.get('trailingPE'):,.2f}")
-            self.info["eps"].set(f"{float(infoTemp.get('trailingEps')):,.2f}")
-            self.info["revenue"].set(f"{float(infoTemp.get('totalRevenue')):,.2f}")
-            self.info["free_cash_flow"].set(f"{float(infoTemp.get('freeCashflow')):,.2f}")
-            self.info["total_debt"].set(f"{float(infoTemp.get('totalDebt')):,.2f}")
-            self.info["dividend_yield"].set(f"{float(infoTemp.get('dividendYield'))*100:,.2f}%")
-        except Exception as error:
-            messagebox.showerror("Error", error)        
-
-        try:
-            financial = stock.financials
-            if not financial.empty and len(financial.columns)>=2:
-                if "Operating Revenue" in financial.index:
-                    revenue = financial.loc["Operating Revenue"]
-                elif "Total Revenue" in financial.index:
-                    revenue = financial.loc["Total Revenue"]
-                else:
-                    revenue = None
-
-                if "Net Income" in financial.index:
-                    income = financial.loc["Net Income"]
-                else:
-                    income = None
-
-                self.info["revenue_growth"].set(f"{(revenue.iloc[0]-revenue.iloc[1])/revenue.iloc[1]*100:+,.2f}%")
-                self.info["income_growth"].set(f"{(income.iloc[0]-income.iloc[1])/income.iloc[1]*100:+,.2f}%")    
         except Exception as error:
             messagebox.showerror("Error", error)
 
+        pe = infoTemp.get("trailingPE")
+        eps = infoTemp.get("trailingEps")
+        revenue = infoTemp.get("totalRevenue")
+        freeCashflow = infoTemp.get("freeCashflow")
+        totalDebt = infoTemp.get("totalDebt")
+        dividendYield = infoTemp.get("dividendYield")
+
+        def checkContent(content):
+            try:
+                if content is None:
+                    return "n/a"
+                return f"{float(content):,.2f}"
+            except:
+                return "n/a"
+
+        self.info["pe"].set(checkContent(pe))
+        self.info["eps"].set(f"${checkContent(eps)}")
+        self.info["revenue"].set(f"${checkContent(revenue)}")
+        self.info["free_cash_flow"].set(f"${checkContent(freeCashflow)}")
+        self.info["total_debt"].set(f"${checkContent(totalDebt)}")
+        if checkContent(dividendYield) != "n/a":
+            self.info["dividend_yield"].set(f"{checkContent(dividendYield)}%")
+        else:
+            self.info["dividend_yield"].set(f"{checkContent(dividendYield)}")
+        self.info["total_debt"].set(f"${checkContent(dividendYield)}")
+
+        try:
+            financial = stock.financials
+        except Exception as error:
+            messagebox.showerror("Error", error)
+
+        if not financial.empty and len(financial.columns)>=2:
+            if "Operating Revenue" in financial.index:
+                revenue = financial.loc["Operating Revenue"]
+            elif "Total Revenue" in financial.index:
+                revenue = financial.loc["Total Revenue"]
+            else:
+                revenue = None
+
+            if "Net Income" in financial.index:
+                income = financial.loc["Net Income"]
+            else:
+                income = None
+
+        if not revenue.empty:
+            self.info["revenue_growth"].set(f"{(revenue.iloc[0]-revenue.iloc[1])/revenue.iloc[1]*100:+,.2f}%")
+        else:
+            self.info["revenue_growth"].set("n/a")
+
+        if not income.empty:
+            self.info["income_growth"].set(f"{(income.iloc[0]-income.iloc[1])/income.iloc[1]*100:+,.2f}%")    
+        else:
+            self.info["income_growth"].set("n/a") 
+
+    # handle valuation
+    def loadVal(self, stock, latestClose):
+        try:
+            info = stock.info
+        except Exception as error:
+            messagebox.showerror("Error", error)
+
+        def checkContent(content):
+            try:
+                if content is None:
+                    return "n/a"
+                return f"{float(content):,.2f}"
+            except:
+                return "n/a"
+        try:
+            fairValue = float(checkContent(info.get("forwardPE"))) * float(checkContent(info.get("trailingEps")))
+            differencePct = (fairValue - latestClose) / latestClose *100
+        except:
+            fairValue = "n/a"
+            differencePct = "n/a"
+
+        self.val["forward_pe"].set(checkContent(info.get("forwardPE")))
+        self.val["peg"].set(checkContent(info.get("pegRatio")))
+        self.val["price_to_book"].set(checkContent(info.get("priceToBook")))
+        self.val["price_to_sales"].set(checkContent(info.get("priceToSalesTrailing12Months")))
+        self.val["fair_value"].set(f"${checkContent(fairValue)}")
+        self.val["difference"].set(f"{checkContent(differencePct)}%")
         
 
 if __name__ == "__main__":
