@@ -176,7 +176,6 @@ class StockAnalyzer:
             infoTemp = stock.info
         except Exception as error:
             messagebox.showerror("Error", error)
-            messagebox.showerror("Error", error)
 
         pe = infoTemp.get("trailingPE")
         eps = infoTemp.get("trailingEps")
@@ -216,21 +215,7 @@ class StockAnalyzer:
                 revenue = financial.loc["Total Revenue"]
             else:
                 revenue = None
-        except Exception as error:
-            messagebox.showerror("Error", error)
 
-        if not financial.empty and len(financial.columns)>=2:
-            if "Operating Revenue" in financial.index:
-                revenue = financial.loc["Operating Revenue"]
-            elif "Total Revenue" in financial.index:
-                revenue = financial.loc["Total Revenue"]
-            else:
-                revenue = None
-
-            if "Net Income" in financial.index:
-                income = financial.loc["Net Income"]
-            else:
-                income = None
             if "Net Income" in financial.index:
                 income = financial.loc["Net Income"]
             else:
