@@ -201,7 +201,7 @@ class StockAnalyzer:
             self.info["dividend_yield"].set(f"{checkContent(dividendYield)}%")
         else:
             self.info["dividend_yield"].set(f"{checkContent(dividendYield)}")
-        self.info["total_debt"].set(f"${checkContent(dividendYield)}")
+        self.info["total_debt"].set(f"${checkContent(totalDebt)}")
 
         try:
             financial = stock.financials
