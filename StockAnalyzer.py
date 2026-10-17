@@ -77,6 +77,16 @@ class StockAnalyzer:
             ttk.Label(valFrame, text=f"{label}:").grid(row=row, column=col, padx=(10, 5), pady=(5, 5), sticky="w")
             ttk.Label(valFrame, textvariable=value, width=20).grid(row=row, column=col+1, pady=(5, 5))
 
+        # Score
+        scoreFrame = ttk.LabelFrame(self.mw, text="Score")
+        scoreFrame.pack(fill="x", padx=12, pady=(0,8))
+        self.score = tk.StringVar(value="--")
+        self.level = tk.StringVar(value="--")
+        ttk.Label(scoreFrame, text="Score: ").grid(row=0, column=0, padx=(10, 5), pady=(5, 5), sticky="w")
+        ttk.Label(scoreFrame, textvariable=self.score).grid(row=0, column=1, pady=(5, 5))
+        ttk.Label(scoreFrame, text="Risky Level: ").grid(row=1, column=0, padx=(10, 5), pady=(5, 5), sticky="w")
+        ttk.Label(scoreFrame, textvariable=self.level).grid(row=1, column=1, pady=(5, 5))
+
         # Chart
         self.figure = Figure(figsize=(16, 9), dpi=100)
         self.axes = self.figure.add_subplot(111)
@@ -231,6 +241,8 @@ class StockAnalyzer:
         else:
             self.info["income_growth"].set("n/a") 
 
+        self.calScore(infoTemp)
+
     # handle valuation
     def loadVal(self, stock, latestClose):
         try:
@@ -258,8 +270,46 @@ class StockAnalyzer:
         self.val["price_to_sales"].set(checkContent(info.get("priceToSalesTrailing12Months")))
         self.val["fair_value"].set(f"${checkContent(fairValue)}")
         self.val["difference"].set(f"{checkContent(differencePct)}%")
-        
 
+    def calScore(self, info):
+        score = 0
+        max = 0
+        
+        pe = info.get("trailingPE")
+        if pe is not None and pe > 0:
+            max += 25
+            if pe <= 10:
+                score += 25
+            elif pe <=20:
+                score += 18.5
+            elif pe <= 30:
+                score += 12
+            else:
+                score += 5
+
+        eps = info.get("trailingEps")
+        if eps is not None:
+            max += 25
+            if eps >= 10:
+                score +=25
+            elif eps >= 5:
+                score += 15
+            elif eps > 0:
+                score += 5
+
+        if max != 0:
+            self.score.set(value= f"{score/max:.1f}")
+            if score/max >= 0.7:
+                self.level.set("Low")
+            elif score/max >=0.4:
+                self.level.set("Medium")
+            else:
+                self.level.set("High")
+        else:
+            self.score.set("n/a")
+            self.level.set("n/a")
+
+        
 if __name__ == "__main__":
     mw = tk.Tk()
     analyzer = StockAnalyzer(mw)
