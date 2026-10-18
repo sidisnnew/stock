@@ -7,6 +7,8 @@ import pandas as pd
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+from analysis import forecast_next_close
+
 class StockAnalyzer:
     def __init__(self, mw):
         self.mw = mw
@@ -34,6 +36,12 @@ class StockAnalyzer:
         summaryFrame.pack(fill="x", padx=12, pady=(0, 8))
         self.summary = tk.StringVar(value="Latest close: --   Daily change: --   20-day MA: --   50-day MA: --")
         ttk.Label(summaryFrame, textvariable=self.summary).pack(anchor="w")
+
+        # Forecast (Just for fun)
+        self.forecast = tk.StringVar(value="At least 6 months")
+        forecastFrame = ttk.LabelFrame(self.mw, text="Estimate for the next trading day", padding=10)
+        forecastFrame.pack(fill="x", padx=12, pady=(0, 8))
+        ttk.Label(forecastFrame, textvariable=self.forecast, wraplength=1400).pack(anchor="w")
 
         # Information
         infoFrame = ttk.LabelFrame(self.mw, text="Information")
@@ -136,8 +144,14 @@ class StockAnalyzer:
                 dcPercent = (dailyChange/previousClose) * 100
                 dailyChangeText = f"{dailyChange:+.2f} ({dcPercent:+.2f}%)"
             else:
-                dailyChangeText = "Not enough data"
+                dailyChangeText = "Not enough data (At least 6 months)"
+            # Forecast
+            if period not in ("1d", "5d", "1mo", "3mo"):
+                self.showForecast(dailyData)
+            else:
+                self.forecast.set("Not enough data")
 
+            # Summary
             if period != "1d" and period != "5d":
                 data["MA20"] = data["Close"].rolling(window=20).mean()
                 data["MA50"] = data["Close"].rolling(window=50).mean()
@@ -308,6 +322,17 @@ class StockAnalyzer:
         else:
             self.score.set("n/a")
             self.level.set("n/a")
+
+    def showForecast(self, dailyData):
+        try:
+            result = forecast_next_close(dailyData)
+            self.forecast.set(
+                f"Estimate the closing price for the next trading day: ${result.predicted_close:.2f}   "
+                f"Test MAE: ${result.mae:.2f}   Test RMSE: ${result.rmse:.2f}   "
+                f"Simple MAE: ${result.baseline_mae:.2f}"
+            )
+        except ValueError as error:
+            self.forecast.set(f"Error: {error}")
 
         
 if __name__ == "__main__":
