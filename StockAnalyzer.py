@@ -149,7 +149,7 @@ class StockAnalyzer:
             if period not in ("1d", "5d", "1mo", "3mo"):
                 self.showForecast(dailyData)
             else:
-                self.forecast.set("Not enough data")
+                self.forecast.set("Not enough data (Need at least 60 records)")
 
             # Summary
             if period != "1d" and period != "5d":
